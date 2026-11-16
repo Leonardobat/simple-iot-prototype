@@ -1,0 +1,24 @@
+menu "Firebase Auth"
+
+    config FIREBASE_API_KEY
+        string "Web API key"
+        default ""
+        help
+            "apiKey" from the Firebase web app config (Project settings > General).
+            Used to call the Firebase Auth REST API.
+
+    config FIREBASE_USER_EMAIL
+        string "Device user email"
+        default ""
+        help
+            Email/password user the device signs in as. Leave empty to send
+            requests without auth (only works with open database rules).
+
+    config FIREBASE_USER_PASSWORD
+        string "Device user password"
+        default ""
+        help
+            Stored in the local sdkconfig and in the firmware image in plain text.
+            Keep sdkconfig out of version control.
+
+endmenu

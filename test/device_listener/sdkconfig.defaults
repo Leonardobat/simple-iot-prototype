@@ -1,0 +1,2 @@
+CONFIG_DEVICE_ID="test-device"
+CONFIG_FIREBASE_DB_URL="https://test-db.example.com"

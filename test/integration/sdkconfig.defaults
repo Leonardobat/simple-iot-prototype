@@ -1,0 +1,6 @@
+# Writes go to devices/integration-test and readings/integration-test, away from the real device;
+# the last test deletes both nodes (and refuses to if DEVICE_ID is changed).
+CONFIG_DEVICE_ID="integration-test"
+CONFIG_UNITY_ENABLE_64BIT=y
+# partitions.csv of the product (the path is relative to this project).
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="../../partitions.csv"

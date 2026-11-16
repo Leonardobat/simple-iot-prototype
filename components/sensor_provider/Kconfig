@@ -1,0 +1,91 @@
+menu "Sensor Provider"
+
+    config MQ135_GPIO
+        int "GPIO of the MQ-135 output divider (gas_1; -1: simulated)"
+        range -1 48
+        default 8
+        help
+            ADC1 pin (GPIO1-10 on the ESP32-S3). The module is fed from 5 V and its analog
+            output (AO) can reach 5 V: never connect it straight to the pin, use the divider below
+            (and 100 nF from the pin to GND).
+
+    config MQ135_DIVIDER_TOP_OHMS
+        int "Divider resistor from AO to the GPIO (ohms)"
+        range 1000 100000
+        default 10000
+
+    config MQ135_DIVIDER_BOTTOM_OHMS
+        int "Divider resistor from the GPIO to GND (ohms)"
+        range 1000 100000
+        default 20000
+        help
+            With 10 k / 20 k the pin sees 2/3 of AO, up to 3.3 V at 5 V; the ADC saturates a bit
+            earlier, which only happens with a gas level far above the sensor's range.
+
+    config MQ135_LOAD_RESISTOR_OHMS
+        int "Load resistor RL of the module (ohms)"
+        range 100 1000000
+        default 10000
+        help
+            Printed next to the SMD resistor of the module near the sensor: 102 = 1 kOhm,
+            103 = 10 kOhm. Some modules have a trimmer instead; measure it.
+
+    config MQ135_R0_OHMS
+        int "R0: sensor resistance in clean air (ohms)"
+        range 1000 10000000
+        default 76630
+        help
+            Calibrate it: after at least 24 h of preheating, leave the sensor in fresh air (about
+            400 ppm CO2) and set R0 to the "gas_1: Rs" value of the sensor_provider debug log (esp_log_level_set). The
+            default is only a typical value.
+
+    config LM35_GPIO
+        int "GPIO of the LM35 output (temperature_2; -1: simulated)"
+        range -1 48
+        default 5
+        help
+            ADC1 pin (GPIO1-10 on the ESP32-S3): ADC2 cannot be read while Wi-Fi is active.
+            Power the LM35 from 5 V (it needs at least 4 V): its output stays below 1.5 V
+            up to 150 degC, safe for the ADC. 10 mV per degree Celsius.
+
+    config LDR_GPIO
+        int "GPIO of the first LDR divider (luminosity_1; -1: simulated)"
+        range -1 48
+        default 4
+        help
+            ADC1 pin (GPIO1-10 on the ESP32-S3): ADC2 cannot be read while Wi-Fi is active.
+
+    config LDR_2_GPIO
+        int "GPIO of the second LDR divider (luminosity_2; -1: simulated)"
+        range -1 48
+        default -1
+        help
+            Same divider values as the first LDR. ADC1 pin (GPIO1-10 on the ESP32-S3).
+
+    config LDR_TO_SUPPLY
+        bool "LDR between 3.3 V and the GPIO (fixed resistor to GND)"
+        default y
+        help
+            With this wiring the voltage rises with light. Disable it if the LDR goes from the
+            GPIO to GND (fixed resistor to 3.3 V).
+
+    config LDR_FIXED_RESISTOR_OHMS
+        int "Fixed resistor of the divider (ohms)"
+        range 100 1000000
+        default 10000
+
+    config LDR_RESISTANCE_AT_10_LUX_OHMS
+        int "LDR resistance at 10 lux (ohms, datasheet)"
+        range 100 1000000
+        default 10000
+        help
+            GL55xx parts: about 8-20 kOhm at 10 lux.
+
+    config LDR_GAMMA_X100
+        int "LDR gamma x 100 (datasheet)"
+        range 10 200
+        default 70
+        help
+            Slope of log(R) against log(lux); GL55xx parts: 0.6-0.8.
+
+endmenu

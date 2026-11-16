@@ -1,0 +1,65 @@
+menu "Actuator Controller"
+
+    comment "Plain LEDs of light_1 and light_2 (-1: none, the light stays simulated)."
+    comment "Avoid strapping (0, 3, 45, 46), flash/PSRAM (26-37), USB (19, 20), UART pins."
+
+    config ACTUATOR_LIGHT_1_GPIO
+        int "GPIO of light_1"
+        range -1 48
+        default 6
+
+    config ACTUATOR_LIGHT_2_GPIO
+        int "GPIO of light_2"
+        range -1 48
+        default 7
+
+    config ACTUATOR_LIGHT_PULL_UP
+        bool "Enable the internal pull-up on the LED GPIOs"
+        default y
+        help
+            Holds the pads at a defined level while they are not driven (e.g. no LED wired yet).
+            While driven, a push-pull output is never floating, so this only costs ~70 uA at low.
+
+    config ACTUATOR_LIGHT_ACTIVE_LOW
+        bool "The LEDs light with a low level (LED wired from 3.3 V to the GPIO)"
+        default n
+
+    comment "Relay modules: relay_1, relay_2 and the two directions of curtain_1 (-1: simulated)."
+
+    config ACTUATOR_RELAY_1_GPIO
+        int "GPIO of relay_1"
+        range -1 48
+        default -1
+
+    config ACTUATOR_RELAY_2_GPIO
+        int "GPIO of relay_2"
+        range -1 48
+        default -1
+
+    config ACTUATOR_CURTAIN_UP_GPIO
+        int "GPIO of the relay that raises curtain_1"
+        range -1 48
+        default 18
+        help
+            curtain_1 stays simulated unless both its GPIOs are set.
+
+    config ACTUATOR_CURTAIN_DOWN_GPIO
+        int "GPIO of the relay that lowers curtain_1"
+        range -1 48
+        default 21
+
+    config ACTUATOR_RELAY_ACTIVE_LOW
+        bool "The relays switch on with a low level"
+        default y
+        help
+            Typical relay modules trigger at 0 V. The internal pull-up then holds them off while
+            the GPIO is not driven (boot, reset).
+
+    config ACTUATOR_CURTAIN_REVERSE_DELAY_MS
+        int "Pause between stopping one direction and starting the other (ms)"
+        range 0 5000
+        default 500
+        help
+            Lets the motor stop before it is reversed, and the two relays are never on together.
+
+endmenu

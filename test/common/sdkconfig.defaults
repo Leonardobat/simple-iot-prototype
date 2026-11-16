@@ -1,0 +1,5 @@
+# Shared by every unit test project (QEMU esp32s3).
+CONFIG_IDF_TARGET="esp32s3"
+CONFIG_ESP_TASK_WDT_INIT=n
+# Same logging implementation as the product firmware.
+CONFIG_LOG_VERSION_2=y

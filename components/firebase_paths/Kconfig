@@ -1,0 +1,10 @@
+menu "Firebase Paths"
+
+    config DEVICE_ID
+        string "Device ID"
+        default "device-01"
+        help
+            Identifies this device under devices/<DEVICE_ID> and readings/<DEVICE_ID>.
+            Must be a valid Firebase key: no ".", "$", "#", "[", "]" or "/".
+
+endmenu

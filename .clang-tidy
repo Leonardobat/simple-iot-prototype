@@ -1,0 +1,37 @@
+# Static analysis for the project's own C code. Stand-in for cppcheck --addon=misra until cppcheck
+# is installed (see .claude/rules/coding-standards.md). Run: make lint
+#
+# Not enabled, on purpose:
+# - readability-function-size.NestingThreshold: counts the nesting inside ESP_RETURN_ON_* /
+#   ESP_LOGx macros, so every function using them "exceeds" 3 levels. The 3-level rule is kept by
+#   review; the 40-line and 4-parameter limits stay enforced here.
+# - readability-implicit-bool-conversion: in C, ==, && and || yield int, so every
+#   `return a == b;` from a bool function is flagged. MISRA's essential-type model treats them as
+#   Boolean, which is what the code relies on.
+Checks: >
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-reserved-identifier,
+  cert-*,
+  -cert-dcl37-c,
+  -cert-dcl51-cpp,
+  clang-analyzer-*,
+  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
+  misc-*,
+  -misc-include-cleaner,
+  readability-braces-around-statements,
+  readability-else-after-return,
+  readability-function-size,
+  readability-inconsistent-declaration-parameter-name,
+  readability-isolate-declaration,
+  readability-misleading-indentation,
+  readability-non-const-parameter,
+  readability-redundant-declaration
+WarningsAsErrors: ''
+HeaderFilterRegex: '.*/(components|main|test)/.*'
+CheckOptions:
+  - key: readability-function-size.LineThreshold
+    value: 40
+  - key: readability-function-size.ParameterThreshold
+    value: 4

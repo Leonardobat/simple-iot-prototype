@@ -1,0 +1,4 @@
+CONFIG_FIREBASE_DB_URL="https://test-db.example.com"
+CONFIG_FIREBASE_API_KEY="test-api-key"
+CONFIG_FIREBASE_USER_EMAIL="device@test.com"
+CONFIG_FIREBASE_USER_PASSWORD="secret"

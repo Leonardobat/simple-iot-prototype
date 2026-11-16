@@ -1,0 +1,19 @@
+menu "Connectivity Provider"
+
+    config WIFI_SSID
+        string "Wi-Fi SSID"
+        default "myssid"
+
+    config WIFI_PASSWORD
+        string "Wi-Fi password"
+        default "mypassword"
+
+    config WIFI_COUNTRY_CODE
+        string "Wi-Fi country code"
+        default "PT"
+        help
+            ISO country code that sets the allowed channels. The ESP-IDF default
+            "01" (world safe mode) does not actively scan channels 12-13, which
+            routers and phone hotspots in Europe may use.
+
+endmenu

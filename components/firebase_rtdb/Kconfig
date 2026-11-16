@@ -1,0 +1,10 @@
+menu "Firebase Realtime Database"
+
+    config FIREBASE_DB_URL
+        string "Realtime Database URL"
+        default "https://<project-id>-default-rtdb.firebaseio.com"
+        help
+            Base URL of the Realtime Database, without trailing slash.
+            Authentication is configured in the "Firebase Auth" menu.
+
+endmenu

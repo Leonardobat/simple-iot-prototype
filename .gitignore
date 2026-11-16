@@ -1,0 +1,11 @@
+# Build output and downloaded components
+build/
+managed_components/
+.cache/
+
+# Local config: holds the Wi-Fi and Firebase credentials
+sdkconfig
+sdkconfig.old
+build_clang/
+warnings.txt
+build_clang.log

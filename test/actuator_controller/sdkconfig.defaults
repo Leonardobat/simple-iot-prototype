@@ -1,0 +1,9 @@
+# light_1 and relay_1 get an output (GPIO path); light_2 and relay_2 have none (simulated path).
+CONFIG_ACTUATOR_LIGHT_1_GPIO=6
+CONFIG_ACTUATOR_LIGHT_2_GPIO=-1
+CONFIG_ACTUATOR_RELAY_1_GPIO=9
+CONFIG_ACTUATOR_RELAY_2_GPIO=-1
+# The curtain uses the default relays: up on GPIO18, down on GPIO21, active low (relay modules).
+CONFIG_ACTUATOR_RELAY_ACTIVE_LOW=y
+# Short, so the reversal tests stay quick but still wait.
+CONFIG_ACTUATOR_CURTAIN_REVERSE_DELAY_MS=20

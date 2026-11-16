@@ -1,0 +1,23 @@
+CONFIG_IDF_TARGET="esp32s3"
+
+# Board: ESP32-S3 N16R8 (16 MB flash). The app (Wi-Fi + TLS) is ~1 MB, which barely fits the default
+# 1 MB partition. partitions.csv has a 1.5 MB app slot and the 4 MB LittleFS "storage" partition
+# (readings and config, docs/adr/0004-persistencia-offline.md).
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# app_main performs the HTTPS requests; the TLS handshake needs more than the 3.5 KB default.
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+
+# Log V2: centralized formatting, smaller flash footprint (only the user format string is stored).
+CONFIG_LOG_VERSION_2=y
+
+# Google/Firebase send GTS Root R1/R4 cross-signed by "GlobalSign Root CA", which is no longer in
+# the bundle. This lets the bundle match the cross-signed root by subject (~700 B of heap).
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_CROSS_SIGNED_VERIFY=y
+
+# Firebase project (not secret). Set FIREBASE_API_KEY and FIREBASE_USER_PASSWORD with
+# `idf.py menuconfig`: they are kept only in the local, unversioned sdkconfig.
+CONFIG_FIREBASE_DB_URL="https://cad-2025112840-default-rtdb.europe-west1.firebasedatabase.app"
+CONFIG_FIREBASE_USER_EMAIL="teste@example.com"
