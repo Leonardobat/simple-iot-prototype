@@ -9,3 +9,8 @@ sdkconfig.old
 build_clang/
 warnings.txt
 build_clang.log
+
+# pytest-embedded (integration tests)
+.pytest_cache/
+__pycache__/
+pytest_log/

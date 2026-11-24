@@ -24,11 +24,11 @@ idf.py -p /dev/ttyACM0 flash monitor             # Ctrl+] sai
 ```
 
 - Testes unitários: em `test/<componente>/`, no QEMU esp32s3 (Claude pode executar).
-- Testes de integração na placa: só o usuário executa (BOOT/RESET manual).
+- Testes de integração na placa: só o usuário executa (BOOT/RESET manual), com `make test-integration` (pytest-embedded, ADR 0006).
 
 ## Dados e configuração
 
-- ADRs em `docs/adr/` (0001 modelo de dados, 0002 atuadores, 0003 sensores, 0004 persistência offline (leituras e `enabled` na flash), 0005 dispositivos do projeto). Modelo: catálogo `devices/<DEVICE_ID>` (ESP: type/unit/simulated via PATCH;
+- ADRs em `docs/adr/` (0001 modelo de dados, 0002 atuadores, 0003 sensores, 0004 persistência offline (leituras e `enabled` na flash), 0005 dispositivos do projeto, 0006 pytest-embedded na integração). Modelo: catálogo `devices/<DEVICE_ID>` (ESP: type/unit/simulated via PATCH;
   SPA: enabled/command; o ESP escuta este nó), leituras `PATCH readings/<DEVICE_ID>` (até 5 por pedido, chave `<timestamp_ms>`), `home/` só da SPA.
 - Auth email/senha (ID token de 1 h, renovado 5 min antes). Config via `idf.py menuconfig`; `sdkconfig.defaults` é versionado.
 - **Nunca** colocar senha, API key ou token no código, em logs ou em `sdkconfig.defaults`; `sdkconfig` está no `.gitignore`.

@@ -42,8 +42,9 @@ test: ## Run every unit test project in QEMU
 test-integration-build: ## Build the board-only integration tests
 	$(IDF_ENV) idf.py -C $(INTEGRATION_DIR) build
 
-test-integration: test-integration-build ## Flash the integration tests to PORT and open the monitor
-	$(IDF_ENV) idf.py -C $(INTEGRATION_DIR) -p $(PORT) flash monitor
+test-integration: test-integration-build ## Flash the board and run the integration tests with pytest-embedded (monitor closed)
+	$(IDF_ENV) pytest -c $(INTEGRATION_DIR)/pytest.ini --app-path $(INTEGRATION_DIR) --port $(PORT) \
+	    $(INTEGRATION_DIR)/test_integration.py
 
 # idf.py clang-check (https://docs.espressif.com/projects/esp-idf/en/v6.1/esp32s3/api-guides/tools/idf-clang-tidy.html)
 # with the project's .clang-tidy. It needs the clang toolchain, so it uses its own build dir. The

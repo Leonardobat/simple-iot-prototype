@@ -1,49 +1,18 @@
 #!/usr/bin/env bash
-# Builds every unit test project in test/ and runs it in QEMU (esp32s3).
-# test/integration needs real Wi-Fi and Firebase, so it only runs on the board (see README).
+# Builds every unit test project in test/ and runs them in QEMU (esp32s3) with pytest-embedded
+# (test/test_unit.py). test/integration needs real Wi-Fi and Firebase, so it only runs on the board
+# (make test-integration).
 #
 # Usage: test/run_unit_tests.sh [project ...]   (default: all unit test projects)
 set -u
 
 TEST_DIR="$(cd "$(dirname "$0")" && pwd)"
-QEMU_TIMEOUT_S=120
-SUMMARY_RE='^[0-9]+ Tests [0-9]+ Failures [0-9]+ Ignored'
-PASS_RE='^[1-9][0-9]* Tests 0 Failures'
 
-if ! command -v idf.py >/dev/null; then
-    echo "ESP-IDF not active: source ~/.espressif/tools/activate_idf_v6.1.sh" >&2
+if ! command -v idf.py >/dev/null || ! command -v pytest >/dev/null; then
+    echo "ESP-IDF not active or pytest-embedded missing: source ~/.espressif/tools/activate_idf_v6.1.sh" >&2
+    echo "and see the README (pip install pytest-embedded pytest-embedded-idf pytest-embedded-qemu)." >&2
     exit 2
 fi
-
-# QEMU never exits on its own: stop it as soon as Unity prints its summary.
-run_in_qemu() {
-    local project=$1
-    local log="$project/build/qemu.log"
-    timeout "$QEMU_TIMEOUT_S" idf.py -C "$project" qemu >"$log" 2>&1 &
-    local pid=$!
-    while kill -0 "$pid" 2>/dev/null && ! grep -qE "$SUMMARY_RE" "$log"; do
-        sleep 1
-    done
-    kill "$pid" 2>/dev/null
-    wait "$pid" 2>/dev/null
-
-    grep -E ':FAIL' "$log"
-    if ! grep -E "$SUMMARY_RE" "$log"; then
-        echo "No Unity summary (crash or timeout), see $log"
-        return 1
-    fi
-    grep -qE "$PASS_RE" "$log"
-}
-
-run_project() {
-    local project=$1
-    mkdir -p "$project/build"
-    if ! idf.py -C "$project" build >"$project/build/build.log" 2>&1; then
-        echo "Build failed, see $project/build/build.log"
-        return 1
-    fi
-    run_in_qemu "$project"
-}
 
 if [ $# -gt 0 ]; then
     projects=("$@")
@@ -55,15 +24,29 @@ else
     done
 fi
 
-failed=()
+build_failed=()
+cases=()
 for name in "${projects[@]}"; do
-    echo "=== $name"
-    run_project "$TEST_DIR/$name" || failed+=("$name")
+    project="$TEST_DIR/$name"
+    mkdir -p "$project/build"
+    echo "=== build $name"
+    if idf.py -C "$project" build >"$project/build/build.log" 2>&1; then
+        cases+=("$TEST_DIR/test_unit.py::test_unit[$name]")
+    else
+        echo "Build failed, see $project/build/build.log"
+        build_failed+=("$name")
+    fi
 done
 
+status=0
+if [ ${#cases[@]} -gt 0 ]; then
+    pytest -c "$TEST_DIR/pytest.ini" "${cases[@]}" || status=1
+fi
+
 echo
-if [ ${#failed[@]} -gt 0 ]; then
-    echo "FAILED: ${failed[*]}"
+if [ ${#build_failed[@]} -gt 0 ]; then
+    echo "BUILD FAILED: ${build_failed[*]}"
     exit 1
 fi
-echo "All ${#projects[@]} unit test projects passed."
+[ "$status" -eq 0 ] && echo "All ${#projects[@]} unit test projects passed."
+exit "$status"

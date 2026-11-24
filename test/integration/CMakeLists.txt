@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.22)
 
 # Board-only integration tests: real Wi-Fi, Firebase Auth and Realtime Database.
-# Not run by run_unit_tests.sh (QEMU has no Wi-Fi).
+# Not run by run_unit_tests.sh (QEMU has no Wi-Fi). Run by pytest-embedded (test_integration.py),
+# which picks each case from the Unity menu (docs/adr/0006-pytest-embedded-integracao.md).
 #
 # Config is layered so credentials are never duplicated: product defaults, then the
 # product's local sdkconfig (Wi-Fi/Firebase credentials), then the overrides here.
@@ -26,7 +27,7 @@ endforeach()
 
 set(EXTRA_COMPONENT_DIRS
     "${REPO_ROOT}/components"
-    "${REPO_ROOT}/test/common/unity_main")
+    "${REPO_ROOT}/test/common/unity_menu_main")
 set(COMPONENTS main)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)

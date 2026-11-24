@@ -136,7 +136,7 @@ test/
   fakes/<hal>/                 Fakes dos HALs (rede, flash_fs, GPIO, ADC, LED, temperatura)
   common/                      app_main e sdkconfig partilhados pelos testes
   integration/                 Testes de integração, só na placa (Wi-Fi e Firebase reais)
-  run_unit_tests.sh            Compila e corre todos os testes unitários no QEMU
+  test_unit.py / run_unit_tests.sh   Compila e corre os testes unitários no QEMU com pytest-embedded (`-s`: log ao vivo)
 Makefile                       Atalhos: build, flash, test, lint, format (make help)
 ```
 
@@ -326,7 +326,7 @@ make help                       # lista todos os alvos
 | `make build`                  | Compila o firmware                                                 |
 | `make flash` / `monitor` / `flash-monitor` | Grava / abre o monitor em `PORT`                      |
 | `make test`                   | Testes unitários no QEMU                                           |
-| `make test-integration`       | Grava os testes de integração na placa e abre o monitor            |
+| `make test-integration`       | Grava os testes de integração na placa e corre-os com pytest-embedded |
 | `make lint`                   | `idf.py clang-check` com o `.clang-tidy`; falha com achados no projeto |
 | `make format` / `format-check`| Aplica / verifica o `clang-format`                                 |
 | `make check`                  | `format-check` + `lint` + `build` + `test` (tudo o que não precisa da placa) |
@@ -380,7 +380,11 @@ test/run_unit_tests.sh firebase_auth      # só um
 | `http_client`         | init/deinit/reinit e validação de URL, PUT/PATCH/POST/stream (sem rede)     |
 | `firebase_auth`       | login, cache, renovação, erros/retry, `expiresIn` inválido, 2 tasks → 1 login |
 | `firebase_rtdb`       | URL com token, PUT e PATCH, token máximo, path longo, falha do login, 1 stream |
-| `data_repository`     | URL `readings/<ID>/<timestamp>.json`, formato da leitura, PATCH do catálogo |
+| `data_repository`     | PATCH de lotes em `readings/<ID>`, chaves por timestamp, limite de 5, PATCH do catálogo |
+| `reading_store`       | log na flash (fake): ordem, segmentos, confirmação, reinício, CRC, versão, despejo |
+| `config_store`        | `enabled` guardado e lido, ficheiro corrompido ou cortado, falha de escrita |
+| `reading_uploader`    | catálogo uma vez, lote de 5, falha mantém e reenvia, task parada offline    |
+| `utils`               | CRC32, texto sem overflow, relógio em ms                                    |
 | `device_listener`     | snapshot, put/patch (chaves com `/`, `null`, não booleano), backoff, deinit |
 
 Os nomes seguem `test_<modulo>_<cenario>_<resultado_esperado>`.
@@ -390,15 +394,24 @@ Os nomes seguem `test_<modulo>_<cenario>_<resultado_esperado>`.
 `test/integration/` usa Wi-Fi e Firebase reais: liga-se, sincroniza a hora, faz login, grava uma
 leitura em `readings/integration-test` e o catálogo em `devices/integration-test`, ativa um sensor
 e confirma que o stream aplica o snapshot e uma alteração ao vivo, cancela o stream, e
-desliga e volta a ligar toda a pilha (`deinit`/`init`). O último teste apaga os nós
-`devices/integration-test` e `readings/integration-test`, para não deixar dados de teste no Firebase. Reutiliza o `sdkconfig` do produto
+desliga e volta a ligar toda a pilha (`deinit`/`init`). Cobre também a ADR 0004: o LittleFS real, a
+configuração e as leituras que sobrevivem a um reset (teste de duas fases) e o envio das leituras
+guardadas depois de cortar o Wi-Fi. O último teste apaga os nós
+`devices/integration-test` e `readings/integration-test` **e a partição `storage`**, para não deixar dados
+de teste. Reutiliza o `sdkconfig` do produto
 (credenciais incluídas), por isso configure primeiro o projeto principal. O `sdkconfig` da
 integração é derivado: sempre que o `sdkconfig` do produto (ou um `sdkconfig.defaults`) muda, o
 próximo build recria-o automaticamente — basta usar o `idf.py menuconfig` na raiz. Os overrides de
 `test/integration/sdkconfig.defaults` (ex.: `DEVICE_ID=integration-test`) mantêm-se.
 
+Corre com o **pytest-embedded** ([ADR 0006](docs/adr/0006-pytest-embedded-integracao.md)): grava a placa,
+faz um reset antes de cada teste e escolhe-os pelo menu do Unity, por isso uma falha não contamina os
+seguintes e sai um relatório por teste. Instalação única, no venv do IDF:
+
 ```sh
-make test-integration          # grava e abre o monitor (Ctrl+] para sair)
+source ~/.espressif/tools/activate_idf_v6.1.sh
+pip install pytest-embedded pytest-embedded-serial-esp pytest-embedded-idf pytest-embedded-qemu
+make test-integration          # a porta tem de estar livre (feche o monitor)
 ```
 
 ### Análise estática

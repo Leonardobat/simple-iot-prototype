@@ -5,8 +5,8 @@
 
 - Framework **Unity** (`unity.h`), um diretório por componente em `test/<componente>/` (ver `test/data_repository`);
   `app_main` compartilhado em `test/common/unity_main`, sdkconfig comum em `test/common/sdkconfig.defaults`.
-- Rodar com `make test` (`test/run_unit_tests.sh`); falha se um projeto rodar 0 testes. pytest-embedded fica
-  para uma fase futura (não funciona bem com QEMU).
+- Rodar com `make test` (`test/run_unit_tests.sh` compila e chama o pytest-embedded com o QEMU, `test/test_unit.py`,
+  com `-s`); falha se um projeto rodar 0 testes.
 - Rodam **no QEMU esp32s3**; a lógica testada não pode depender de hardware real. Um HAL que o QEMU emula
   (ex.: `gpio_output`) também tem projeto próprio; o `rgb_led` não, porque o QEMU não emula o RMT (o
   `led_strip` fica à espera do fim da transmissão), nem o `analog_input`, porque com o `esp_adc` ligado o
@@ -28,4 +28,8 @@
   escreva noutro nó acrescenta esse nó à limpeza.
 - **Executados manualmente pelo usuário** (`make test-integration`). Claude escreve/atualiza esses testes e
   descreve como rodá-los, mas **não** tenta executá-los.
+- **Rodam com pytest-embedded** ([ADR 0006](../../docs/adr/0006-pytest-embedded-integracao.md)): menu do Unity
+  (`test/common/unity_menu_main`), um reset antes de cada `TEST_CASE` (cada um independente, com o seu
+  `ensure_online()`), tag `[integration]`, e `TEST_CASE_MULTIPLE_STAGES` quando o teste precisa de reset a
+  meio. O teste de limpeza é o último do ficheiro e apaga também a partição `storage`.
 

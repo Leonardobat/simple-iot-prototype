@@ -4,3 +4,8 @@ CONFIG_DEVICE_ID="integration-test"
 CONFIG_UNITY_ENABLE_64BIT=y
 # partitions.csv of the product (the path is relative to this project).
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="../../partitions.csv"
+# pytest-embedded talks to the board through the native USB port (/dev/ttyACM0): the Unity menu must
+# read its commands from the USB Serial/JTAG, not from UART0 (the default), where nobody writes.
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+# The menu waits for a command in a loop that holds the CPU; same setting as the unit tests.
+CONFIG_ESP_TASK_WDT_INIT=n
