@@ -154,8 +154,9 @@ static void on_stream_event(const char *event, const char *data, void *ctx)
     } else if (strcmp(event, "patch") == 0) {
         dispatch(data, true);
     } else if (strcmp(event, "keep-alive") != 0) {
-        /* cancel / auth_revoked: Firebase closes the stream right after. */
+        /* cancel / auth_revoked: the stream is dead even if the server leaves it open. */
         ESP_LOGW(TAG, "Stream event '%s': %s", event, data);
+        firebase_rtdb_stream_cancel();
     } else {
         /* keep-alive: nothing to do. */
     }

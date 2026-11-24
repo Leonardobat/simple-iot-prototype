@@ -186,6 +186,20 @@ TEST_CASE("test_reading_store_init_keeps_the_records_of_the_previous_run", "[rea
     assert_peeked_record(2U, 3U);
 }
 
+TEST_CASE("test_reading_store_latest_is_the_newest_record_since_init", "[reading_store]")
+{
+    reading_record_t latest = {0};
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_NOT_FOUND, reading_store_latest(&latest));
+
+    append_records(1U, 3U);
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, reading_store_latest(&latest));
+    TEST_ASSERT_EQUAL_INT64(BASE_TIMESTAMP_MS + 3, latest.timestamp_ms);
+    TEST_ASSERT_EQUAL_UINT32(3U, peek(PEEK_MAX)); /* Nothing was consumed. */
+
+    restart_store(); /* The previous run's records are not "latest" any more. */
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_NOT_FOUND, reading_store_latest(&latest));
+}
+
 TEST_CASE("test_reading_store_append_after_restart_opens_a_new_segment", "[reading_store]")
 {
     append_records(1U, 2U);

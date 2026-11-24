@@ -36,7 +36,7 @@ static bool s_wifi_ready;
 static esp_event_handler_instance_t s_wifi_handler;
 static esp_event_handler_instance_t s_ip_handler;
 static esp_timer_handle_t s_retry_timer;
-static bool s_sntp_ready;
+static atomic_bool s_sntp_ready; /* Read by the event loop task, written by init/deinit. */
 
 static atomic_bool s_stopping;
 static uint32_t s_retry_delay_ms; /* Used only by the default event loop task. */
@@ -94,10 +94,18 @@ static void on_ip_event(void *arg, esp_event_base_t base, int32_t id, void *data
         (void)xEventGroupClearBits(s_wifi_events, CONNECTED_BIT);
         return;
     }
+    if (id != IP_EVENT_STA_GOT_IP) {
+        return; /* Other IP events (IPv6 link-local...) carry other data and do not mean online. */
+    }
     const ip_event_got_ip_t *event = data;
     s_retry_delay_ms = 0U;
     ESP_LOGI(TAG, "Got IP " IPSTR, IP2STR(&event->ip_info.ip));
     (void)xEventGroupSetBits(s_wifi_events, CONNECTED_BIT);
+    /* A request sent before the network was up failed, and lwIP waits 15 s or more before the next
+     * one: ask again now. Also refreshes the clock after a reconnection. */
+    if (atomic_load(&s_sntp_ready)) {
+        warn_on_error(esp_netif_sntp_start(), "SNTP restart");
+    }
 }
 
 /* ---- Initialization steps ---- */
@@ -178,15 +186,13 @@ static void on_time_synced(struct timeval *tv)
     (void)xEventGroupSetBits(s_wifi_events, TIME_VALID_BIT);
 }
 
-/* SNTP keeps retrying by itself and asks again whenever the station gets a new IP. */
+/* SNTP keeps retrying by itself, and on_ip_event() restarts it whenever the station gets an IP. */
 static esp_err_t start_sntp(void)
 {
     esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG(CONNECTIVITY_NTP_SERVER);
     config.sync_cb = on_time_synced;
-    config.renew_servers_after_new_IP = true;
-    config.ip_event_to_renew = IP_EVENT_STA_GOT_IP;
     ESP_RETURN_ON_ERROR(esp_netif_sntp_init(&config), TAG, "SNTP init failed");
-    s_sntp_ready = true;
+    atomic_store(&s_sntp_ready, true);
     return ESP_OK;
 }
 
@@ -249,7 +255,7 @@ static void release_wifi(void)
     }
     if (s_ip_handler != NULL) {
         warn_on_error(
-            esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, s_ip_handler),
+            esp_event_handler_instance_unregister(IP_EVENT, ESP_EVENT_ANY_ID, s_ip_handler),
             "IP handler");
         s_ip_handler = NULL;
     }
@@ -274,9 +280,9 @@ static void release_infrastructure(void)
 void connectivity_provider_deinit(void)
 {
     atomic_store(&s_stopping, true);
-    if (s_sntp_ready) {
+    if (atomic_load(&s_sntp_ready)) {
+        atomic_store(&s_sntp_ready, false);
         esp_netif_sntp_deinit();
-        s_sntp_ready = false;
     }
     release_wifi();
     release_infrastructure();

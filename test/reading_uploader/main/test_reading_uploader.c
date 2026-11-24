@@ -120,6 +120,47 @@ TEST_CASE("test_reading_uploader_step_sends_at_most_one_batch_oldest_first", "[r
     TEST_ASSERT_EQUAL_UINT32(2U, pending_count());
 }
 
+/* A reset leaves the readings of the last run in flash and forgets which were sent. */
+static void reset_store_keeping_the_flash(void)
+{
+    reading_store_deinit();
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, reading_store_init());
+}
+
+TEST_CASE("test_reading_uploader_sends_the_newest_reading_ahead_of_an_older_backlog",
+          "[reading_uploader]")
+{
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, reading_uploader_step()); /* Catalog. */
+    for (uint32_t n = 1U; n <= (DATA_REPOSITORY_BATCH_MAX + 2U); n++) {
+        append_record(n);
+    }
+    reset_store_keeping_the_flash();
+    append_record(DATA_REPOSITORY_BATCH_MAX + 3U);
+    const uint32_t before = fake_http_client.patch_calls;
+
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, reading_uploader_step());
+
+    TEST_ASSERT_EQUAL_UINT32(before + 2U, fake_http_client.patch_calls); /* Newest, then batch. */
+    TEST_ASSERT_NOT_NULL(strstr(fake_http_client.last_body, "\"1001\":"));
+    TEST_ASSERT_NULL(strstr(fake_http_client.last_body, "\"1008\":"));
+
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, reading_uploader_step());
+    TEST_ASSERT_EQUAL_UINT32(before + 3U, fake_http_client.patch_calls); /* Not sent ahead twice. */
+}
+
+TEST_CASE("test_reading_uploader_does_not_send_ahead_when_the_batch_holds_the_newest",
+          "[reading_uploader]")
+{
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, reading_uploader_step()); /* Catalog. */
+    append_record(1U);
+    append_record(2U);
+    const uint32_t before = fake_http_client.patch_calls;
+
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, reading_uploader_step());
+
+    TEST_ASSERT_EQUAL_UINT32(before + 1U, fake_http_client.patch_calls);
+}
+
 TEST_CASE("test_reading_uploader_failed_send_keeps_the_readings_and_resends_them",
           "[reading_uploader]")
 {

@@ -40,6 +40,9 @@ static uint32_t s_last_seq;
 static size_t s_read_index;
 /* The active segment takes no more records: it is full, or an append to it failed. */
 static bool s_active_closed;
+/* The newest record appended since init, for reading_store_latest(). */
+static reading_record_t s_latest;
+static bool s_has_latest;
 
 /* ---- Encoding ---- */
 
@@ -223,6 +226,7 @@ esp_err_t reading_store_init(void)
     s_lock = xSemaphoreCreateMutex();
     ESP_RETURN_ON_FALSE(s_lock != NULL, ESP_ERR_NO_MEM, TAG, "Mutex alloc failed");
     s_read_index = 0U;
+    s_has_latest = false;
     s_active_closed = true; /* Whatever the last run left is never appended to. */
     const esp_err_t err = scan_segments();
     if (err != ESP_OK) {
@@ -240,6 +244,7 @@ void reading_store_deinit(void)
     s_read_seq = 0U;
     s_last_seq = 0U;
     s_read_index = 0U;
+    s_has_latest = false;
 }
 
 /* ---- Append ---- */
@@ -326,8 +331,24 @@ esp_err_t reading_store_append(const reading_record_t *record)
     assert(record != NULL);
     ESP_RETURN_ON_ERROR(take_lock(), TAG, "Store busy");
     const esp_err_t err = append_locked(record);
+    if (err == ESP_OK) {
+        s_latest = *record;
+        s_has_latest = true;
+    }
     (void)xSemaphoreGive(s_lock); /* Cannot fail: taken above by this task. */
     return err;
+}
+
+esp_err_t reading_store_latest(reading_record_t *out)
+{
+    assert(out != NULL);
+    ESP_RETURN_ON_ERROR(take_lock(), TAG, "Store busy");
+    const bool found = s_has_latest;
+    if (found) {
+        *out = s_latest;
+    }
+    (void)xSemaphoreGive(s_lock); /* Cannot fail: taken above by this task. */
+    return found ? ESP_OK : ESP_ERR_NOT_FOUND;
 }
 
 /* ---- Peek and confirm ---- */

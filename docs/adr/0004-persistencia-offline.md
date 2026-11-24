@@ -41,6 +41,10 @@ task de amostragem (5 s)  →  flash (LittleFS)  →  task de envio (1 s)  →  
   política revê-se se isso acontecer.
 - **O `PUT`/`PATCH` com a mesma chave é idempotente:** reenviar é seguro. Um reset a meio de um envio nunca
   duplica dados.
+- **A leitura mais recente sai à frente do atraso.** Depois de um reset o envio recomeça no primeiro segmento e
+  reenvia até 256 registos (1 a 2 minutos), e nesse tempo a SPA veria o dispositivo "offline". Por isso o
+  `reading_store` guarda em RAM o último registo acrescentado desde o arranque (`reading_store_latest`) e o
+  envio manda-o sozinho, num `PATCH` à parte, sempre que ainda há registos mais antigos à frente dele.
 
 ### 2. Relógio válido
 
@@ -58,6 +62,8 @@ O dispositivo deixa de abortar quando o Wi-Fi ou o SNTP falham. O `connectivity_
 Wi-Fi e o SNTP **em segundo plano** (com o `backoff` que já existe) e devolve logo. O estado da rede vem do
 `esp_event` (`IP_EVENT_STA_GOT_IP` liga e `IP_EVENT_STA_LOST_IP` ou `WIFI_EVENT_STA_DISCONNECTED` desligam o
 bit `CONNECTED_BIT` do event group). O SNTP não tem evento: o `sync_cb` da configuração liga o `TIME_VALID_BIT`.
+O `GOT_IP` também reinicia o SNTP: sem isso, um pedido enviado antes de haver rede falhava e o lwIP só repetia ao
+fim de 15 s ou mais (sincronizações de 34 a 39 s nos testes na placa; com o reinício, 6 a 14 s).
 Expõe `connectivity_provider_is_connected()` e `connectivity_provider_is_time_valid()`. A task de envio só
 tenta a rede com a ligação ativa, por isso offline não gasta timeouts.
 

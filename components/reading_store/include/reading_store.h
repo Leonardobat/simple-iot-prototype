@@ -63,6 +63,21 @@ void reading_store_deinit(void);
 esp_err_t reading_store_append(const reading_record_t *record);
 
 /**
+ * @brief Copies the newest record appended since reading_store_init(), whether sent or not. After a
+ *        reset the oldest records go out first, so the uploader uses this one to show the present
+ *        at once.
+ *
+ * @param[out] out Receives the record.
+ * @return
+ *  - ESP_OK
+ *  - ESP_ERR_NOT_FOUND if nothing was appended since init
+ *  - ESP_ERR_TIMEOUT if the lock is busy
+ * @pre Initialized; @p out not NULL (asserted).
+ * @note Thread-safe, non-blocking apart from the lock. Does not consume anything.
+ */
+esp_err_t reading_store_latest(reading_record_t *out);
+
+/**
  * @brief Copies the oldest unconfirmed records into @p out, without consuming them. Corrupt records
  *        are skipped (and logged). Never crosses a segment boundary, so it may return fewer than
  *        @p max_records while more are pending.

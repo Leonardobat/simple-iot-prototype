@@ -435,6 +435,20 @@ TEST_CASE("test_device_listener_keep_alive_cancel_and_auth_revoked_change_nothin
     TEST_ASSERT_TRUE(actuator_controller_is_on(ACTUATOR_RGB_LIGHT_1));
 }
 
+TEST_CASE("test_device_listener_cancel_and_auth_revoked_end_the_stream_to_reconnect",
+          "[device_listener]")
+{
+    start_listener(true);
+    EMIT({"keep-alive", "null"});
+    TEST_ASSERT_EQUAL_UINT32(0U, fake_http_client.cancel_calls);
+
+    EMIT({"auth_revoked", "\"credential is no longer valid\""});
+    TEST_ASSERT_EQUAL_UINT32(1U, fake_http_client.cancel_calls);
+
+    EMIT({"cancel", "\"Permission denied\""});
+    TEST_ASSERT_EQUAL_UINT32(2U, fake_http_client.cancel_calls);
+}
+
 TEST_CASE("test_device_listener_invalid_json_is_skipped", "[device_listener]")
 {
     start_listener(true);

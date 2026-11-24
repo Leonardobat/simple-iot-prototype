@@ -20,11 +20,16 @@
 
 static const char *TAG = "reading_uploader";
 
-/* Used only by the upload task (or a test calling reading_uploader_step() while it is offline). */
-static reading_record_t s_records[DATA_REPOSITORY_BATCH_MAX];
-static char s_sensors_json[DATA_REPOSITORY_BATCH_MAX][SENSOR_READINGS_JSON_MAX_LEN];
-static char s_actuators_json[DATA_REPOSITORY_BATCH_MAX][ACTUATOR_STATES_JSON_MAX_LEN];
-static data_repository_reading_t s_batch[DATA_REPOSITORY_BATCH_MAX];
+/* Used only by the upload task (or a test calling reading_uploader_step() while it is offline).
+ * The last slot is for the newest reading, sent ahead of an older backlog. */
+#define NEWEST_SLOT DATA_REPOSITORY_BATCH_MAX
+#define SLOT_COUNT  (DATA_REPOSITORY_BATCH_MAX + 1U)
+static reading_record_t s_records[SLOT_COUNT];
+static char s_sensors_json[SLOT_COUNT][SENSOR_READINGS_JSON_MAX_LEN];
+static char s_actuators_json[SLOT_COUNT][ACTUATOR_STATES_JSON_MAX_LEN];
+static data_repository_reading_t s_batch[SLOT_COUNT];
+/* Timestamp of the newest reading already sent ahead; 0 when none. */
+static int64_t s_newest_sent_ms;
 static char s_catalog_sensors_json[SENSOR_CATALOG_JSON_MAX_LEN];
 static char s_catalog_actuators_json[ACTUATOR_CATALOG_JSON_MAX_LEN];
 static bool s_catalog_published;
@@ -67,6 +72,27 @@ static esp_err_t prepare_reading(size_t index)
     return ESP_OK;
 }
 
+/* After a reset the oldest readings go out first. While they are ahead of the newest one, sending
+ * the newest at once keeps the app showing the present; the key is the timestamp, so the later
+ * resend of the same reading is harmless. */
+static esp_err_t send_newest_ahead(int64_t last_batch_ms)
+{
+    const esp_err_t found = reading_store_latest(&s_records[NEWEST_SLOT]);
+    if (found == ESP_ERR_NOT_FOUND) {
+        return ESP_OK;
+    }
+    ESP_RETURN_ON_ERROR(found, TAG, "Newest reading not read");
+    const int64_t newest_ms = s_records[NEWEST_SLOT].timestamp_ms;
+    if ((newest_ms <= last_batch_ms) || (newest_ms == s_newest_sent_ms)) {
+        return ESP_OK;
+    }
+    ESP_RETURN_ON_ERROR(prepare_reading(NEWEST_SLOT), TAG, "Newest reading");
+    ESP_RETURN_ON_ERROR(data_repository_push_readings(&s_batch[NEWEST_SLOT], 1U), TAG,
+                        "Newest reading not sent");
+    s_newest_sent_ms = newest_ms;
+    return ESP_OK;
+}
+
 static esp_err_t send_batch(void)
 {
     size_t count = 0U;
@@ -78,6 +104,7 @@ static esp_err_t send_batch(void)
     for (size_t i = 0U; i < count; i++) {
         ESP_RETURN_ON_ERROR(prepare_reading(i), TAG, "Reading %zu", i);
     }
+    ESP_RETURN_ON_ERROR(send_newest_ahead(s_records[count - 1U].timestamp_ms), TAG, "Newest ahead");
     ESP_RETURN_ON_ERROR(data_repository_push_readings(s_batch, count), TAG, "Batch not sent");
     ESP_LOGI(TAG, "Sent %zu readings up to %" PRId64, count, s_batch[count - 1U].timestamp_ms);
     return reading_store_confirm(count);
@@ -162,5 +189,6 @@ esp_err_t reading_uploader_deinit(void)
     s_task_exited = NULL;
     s_task = NULL;
     s_catalog_published = false;
+    s_newest_sent_ms = 0;
     return ESP_OK;
 }
